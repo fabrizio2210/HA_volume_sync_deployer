@@ -12,6 +12,7 @@ script:
   - git clone https://github.com/fabrizio2210/docker-HA_volume_sync_deployer.git
   - cd docker-HA_volume_sync_deployer/
   - git checkout armv7hf
+  - sed -i 's/https:\/\/github.com\//git@github.com:/' .gitmodules
   - git submodule update --init --recursive
   - cd src
   - git fetch
