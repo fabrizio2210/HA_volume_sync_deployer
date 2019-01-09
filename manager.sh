@@ -84,72 +84,77 @@ done
 # take list of nodes from TXT in DNS domain.
 # Key="nodes" Value separate  by ","
 
-nodeList=$(for _string in $(dig TXT $serviceName +short | grep nodes=) ; do 
-  echo ${_string#*=}|tr -d '"' | tr ',' '\n' 
-done)
-
-###
-# Localize stack
-# Either take from argument or looking my container
-if [ -z "$stack" ] ; then
-  for _container in $(docker ps --format '{{printf "%s;%s" .ID .Labels}}' | tr -d ' ') ; do
-    if [ "${_container%;*}" == $(hostname -s) ] ; then
-      for _label in $(echo ${_cont#*;} | tr ',' '\n') ; do
-        if echo $_label | grep -q 'com.docker.swarm.service.name' ; then
-          stack=${_label#*=}
-        fi
-      done
+while true ; do 
+  nodeList=$(for _string in $(dig TXT $serviceName +short | grep nodes=) ; do 
+    echo ${_string#*=}|tr -d '"' | tr ',' '\n' 
+  done)
+  
+  ###
+  # Localize stack
+  # Either take from argument or looking my container
+  if [ -z "$stack" ] ; then
+    for _container in $(docker ps --format '{{printf "%s;%s" .ID .Labels}}' | tr -d ' ') ; do
+      if [ "${_container%;*}" == $(hostname -s) ] ; then
+        for _label in $(echo ${_cont#*;} | tr ',' '\n') ; do
+          if echo $_label | grep -q 'com.docker.swarm.service.name' ; then
+            stack=${_label#*=}
+          fi
+        done
+      fi
+    done
+  fi
+  
+  ###
+  # Verify services of stack and destroy/deploy if differs from state to be
+  
+  changed=0
+  existingClientServices=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$clientServicePrefix")
+  for _node in $nodeList ; do
+    _nodeID=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$clientServicePrefix${_node%@*}")
+    if [ -z "$_nodeID" ] ; then
+      changed=1
+      # deploy client service
+      docker service create --name "$clientServicePrefix${_node%@*}" \
+                            --label  com.docker.stack.image="$clientImage" \
+                            --label   com.docker.stack.namespace="$stack" \
+                            --container-label com.docker.stack.namespace="$stack" \
+                            --no-resolve-image \
+                            $clientImage /usr/local/bin/chisel_linux_arm client --auth $auth http://${_node#*@} 0.0.0.0:30865:localhost:30865
+    else 
+      # remove from existing to verify that there is no services remaining
+      existingClientServices=$(echo $existingClientServices | tr ' ' '\n' | grep -v $_nodeID)
     fi
   done
-fi
-
-###
-# Verify services of stack and destroy/deploy if differs from state to be
-
-changed=0
-existingClientServices=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$clientServicePrefix")
-for _node in $nodeList ; do
-  _nodeID=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$clientServicePrefix${_node%@*}")
-  if [ -z "$_nodeID" ] ; then
+  
+  if [ ! -z "$existingClientServices" ] ; then
+    # destroy supplementary services
     changed=1
-    # deploy client service
-    docker service create --name "$clientServicePrefix${_node%@*}" \
-                          --label  com.docker.stack.image="$clientImage" \
-                          --label   com.docker.stack.namespace="$stack" \
-                          --container-label com.docker.stack.namespace="$stack" \
-                          --no-resolve-image \
-                          $clientImage /usr/local/bin/chisel_linux_arm client --auth $auth http://${_node#*@} 0.0.0.0:30865:localhost:30865
-  else 
-    # remove from existing to verify that there is no services remaining
-    existingClientServices=$(echo $existingClientServices | tr ' ' '\n' | grep -v $_nodeID)
+    for _service in $existingClientServices ; do
+      docker service rm $_service
+    done
   fi
+  
+  if [ -z "$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$serverServiceName")" ] ; then
+    # server is missing
+    changed=1
+  fi
+  
+  if [ $changed -eq 1 ] ; then
+    # destroy and deploy server service
+      docker service rm $(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$serverServiceName")
+      docker service create --name "$serverServiceName" \
+                            --label  com.docker.stack.image="$serverImage" \
+                            --label   com.docker.stack.namespace="$stack" \
+                            --container-label com.docker.stack.namespace="$stack" \
+                            --no-resolve-image \
+                            --env CSYNC2_NODES=$(echo $nodeList | tr '\n' ',' | tr ' ' ',') \
+                            --env CSYNC2_NAME=$nodeName \
+                            --env CSYNC2_KEY=$key \
+                            --env CSYNC2_DIRS=$dirsString \
+                            --env CSYNC2_AUTHJSON="{ \"$auth\": [\"\"] }" \
+                            $serverImage
+  fi
+
+  sleep 30
+
 done
-
-if [ ! -z "$existingClientServices" ] ; then
-  # destroy supplementary services
-  changed=1
-  for _service in $existingClientServices ; do
-    docker service rm $_service
-  done
-fi
-
-if [ -z "$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$serverServiceName")" ] ; then
-  # server is missing
-  changed=1
-fi
-
-if [ $changed -eq 1 ] ; then
-  # destroy and deploy server service
-    docker service rm $(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$serverServiceName")
-    docker service create --name "$serverServiceName" \
-                          --label  com.docker.stack.image="$serverImage" \
-                          --label   com.docker.stack.namespace="$stack" \
-                          --container-label com.docker.stack.namespace="$stack" \
-                          --no-resolve-image \
-                          --env CSYNC2_NODES=$(echo $nodeList | tr '\n' ',' | tr ' ' ',') \
-                          --env CSYNC2_NAME=$nodeName \
-                          --env CSYNC2_KEY=$key \
-                          --env CSYNC2_DIRS=$dirsString \
-                          --env CSYNC2_AUTHJSON="{ \"$auth\": [\"\"] }" \
-                          $serverImage
-fi
