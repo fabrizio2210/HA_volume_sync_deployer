@@ -1,5 +1,7 @@
 addons:
-  ssh_known_hosts: git.example.com
+  ssh_known_hosts: github.com
+
+language: generic
 
 script:
   - mkdir ~/.ssh
@@ -10,6 +12,7 @@ script:
   - git clone https://github.com/fabrizio2210/docker-HA_volume_sync_deployer.git
   - cd docker-HA_volume_sync_deployer/
   - git checkout armv7hf
+  - git submodule update --init --recursive
   - cd src
   - git fetch
   - git checkout master
