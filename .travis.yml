@@ -4,8 +4,7 @@ addons:
 language: generic
 
 script:
-  - mkdir ~/.ssh
-  - echo -e $MYPROJECT_CI_PRIVATE_KEY > /tmp/id_rsa
+  - echo -e "$MYPROJECT_CI_PRIVATE_KEY" > /tmp/id_rsa
   - base64 -d /tmp/id_rsa > ~/.ssh/id_rsa_myproject_ci
   - chmod 600 ~/.ssh/id_rsa_myproject_ci
   - echo -e "Host github.com\n User git\n IdentityFile ~/.ssh/id_rsa_myproject_ci\n StrictHostKeyChecking no" > ~/.ssh/config
