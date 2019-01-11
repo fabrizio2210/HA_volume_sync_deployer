@@ -9,6 +9,7 @@ chmod 600 ~/.ssh/id_rsa_myproject_ci
 echo -e "Host github.com\n User git\n IdentityFile ~/.ssh/id_rsa_myproject_ci\n StrictHostKeyChecking no" > ~/.ssh/config
 chmod 600 ~/.ssh/config
 
+echo $2
 repos="$(echo "$2" | tr ',' '\n')"
 
 for repo in $repos ; do
