@@ -1,15 +1,15 @@
 # $1 -> key in base 64
 # $2 -> list of repositories comma separated with branch and submodule path (es: project1;develop:src,project2;master:src)
 
-set -x
 # Setup key for git
 
 echo -e "$1" | base64 -d > ~/.ssh/id_rsa_myproject_ci
+set -x
 chmod 600 ~/.ssh/id_rsa_myproject_ci
 echo -e "Host github.com\n User git\n IdentityFile ~/.ssh/id_rsa_myproject_ci\n StrictHostKeyChecking no" > ~/.ssh/config
 chmod 600 ~/.ssh/config
 
-repos=$(echo "$2" | tr ',' \n)
+repos="$(echo "$2" | tr ',' '\n')"
 
 for repo in $repos ; do
   project=$(    echo "$repo" | tr ';' ' ' | awk '{ print $1 }')
