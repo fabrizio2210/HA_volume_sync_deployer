@@ -120,7 +120,7 @@ while true ; do
                             --label   com.docker.stack.namespace="$stack" \
                             --container-label com.docker.stack.namespace="$stack" \
                             --no-resolve-image \
-                            $proxyImage /usr/local/bin/chisel --auth $auth http://${_node#*@} 0.0.0.0:30865:localhost:30865
+                            $proxyImage /usr/local/bin/chisel client --auth $auth http://${_node#*@} 0.0.0.0:30865:localhost:30865
     else 
       # remove from existing to verify that there is no services remaining
       existingClientServices=$(echo $existingClientServices | tr ' ' '\n' | grep -v $_nodeID)
