@@ -20,9 +20,9 @@ set -x
 
 # NAMES
 # server: volume-sync-server
-# client: volume-sync-client-$NAME
+# proxy: volume-sync-proxy-$NAME
 
-clientServicePrefix="volume-sync-client-"
+proxyServicePrefix="volume-sync-proxy-"
 serverServiceName="volume-sync-server"
 volumePrefix="/opt/data"
 
@@ -31,7 +31,7 @@ key=$VOLUMESYNC_KEY
 volumesString=$VOLUMESYNC_VOLUMES
 auth=$VOLUMESYNC_AUTH
 serverImage=$VOLUMESYNC_SERVERIMAGE
-clientImage=$VOLUMESYNC_CLIENTIMAGE
+proxyImage=$VOLUMESYNC_PROXYIMAGE
 stack=$VOLUMESYNC_STACK
 serviceName=$VOLUMESYNC_SERVICE
 
@@ -53,7 +53,7 @@ while getopts ":n:k:d:a:i:c:s:r:" opt; do
 			serverImage=$(echo $OPTARG | tr -d '[[:space:]]')
       ;;
 		c)
-			clientImage=$(echo $OPTARG | tr -d '[[:space:]]')
+			proxyImage=$(echo $OPTARG | tr -d '[[:space:]]')
       ;;
 		s)
 			stack=$(echo $OPTARG | tr -d '[[:space:]]')
@@ -72,7 +72,7 @@ done
 [ -z "$volumesString" ] && echo "Dirs is missing, define with -d" && exit 1
 [ -z "$auth" ] && echo "Auth is missing, define with -a" && exit 1
 [ -z "$serverImage" ] && echo "Server image is missing, define with -i" && exit 1
-[ -z "$clientImage" ] && echo "Client image is missing, define with -c" && exit 1
+[ -z "$proxyImage" ] && echo "Client image is missing, define with -c" && exit 1
 [ -z "$serviceName" ] && echo "Service name is missing, define with -r" && exit 1
 
 
@@ -109,18 +109,18 @@ while true ; do
   # Verify services of stack and destroy/deploy if differs from state to be
   
   changed=0
-  existingClientServices=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$clientServicePrefix")
+  existingClientServices=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$proxyServicePrefix")
   for _node in $nodeList ; do
-    _nodeID=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$clientServicePrefix${_node%@*}")
+    _nodeID=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$proxyServicePrefix${_node%@*}")
     if [ -z "$_nodeID" ] ; then
       changed=1
       # deploy client service
-      docker service create --name "$clientServicePrefix${_node%@*}" \
-                            --label  com.docker.stack.image="$clientImage" \
+      docker service create --name "$proxyServicePrefix${_node%@*}" \
+                            --label  com.docker.stack.image="$proxyImage" \
                             --label   com.docker.stack.namespace="$stack" \
                             --container-label com.docker.stack.namespace="$stack" \
                             --no-resolve-image \
-                            $clientImage /usr/local/bin/chisel --auth $auth http://${_node#*@} 0.0.0.0:30865:localhost:30865
+                            $proxyImage /usr/local/bin/chisel --auth $auth http://${_node#*@} 0.0.0.0:30865:localhost:30865
     else 
       # remove from existing to verify that there is no services remaining
       existingClientServices=$(echo $existingClientServices | tr ' ' '\n' | grep -v $_nodeID)
