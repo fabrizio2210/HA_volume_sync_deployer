@@ -28,7 +28,7 @@ volumePrefix="/opt/data"
 
 nodeName=$VOLUMESYNC_NAME
 key=$VOLUMESYNC_KEY
-dirsString=$VOLUMESYNC_DIRS
+volumesString=$VOLUMESYNC_VOLUMES
 auth=$VOLUMESYNC_AUTH
 serverImage=$VOLUMESYNC_SERVERIMAGE
 clientImage=$VOLUMESYNC_CLIENTIMAGE
@@ -44,7 +44,7 @@ while getopts ":n:k:d:a:i:c:s:r:" opt; do
 			key=$(echo $OPTARG | tr -d '[[:space:]]')
 			;;
 		d)
-			dirsString=$(echo $OPTARG | tr -d '[[:space:]]')
+			volumesString=$(echo $OPTARG | tr -d '[[:space:]]')
       ;;
 		a)
 			auth=$OPTARG
@@ -69,7 +69,7 @@ done
 
 [ -z "$nodeName" ] && echo "Node name missing, define with -n" && exit 1
 [ -z "$key" ] && echo "Key is missing, define with -k" && exit 1
-[ -z "$dirsString" ] && echo "Dirs is missing, define with -d" && exit 1
+[ -z "$volumesString" ] && echo "Dirs is missing, define with -d" && exit 1
 [ -z "$auth" ] && echo "Auth is missing, define with -a" && exit 1
 [ -z "$serverImage" ] && echo "Server image is missing, define with -i" && exit 1
 [ -z "$clientImage" ] && echo "Client image is missing, define with -c" && exit 1
@@ -144,7 +144,7 @@ while true ; do
   mountOpt=
   internalDirs=
   i=1
-  for dir in $(echo $dirsString | tr ',' '\n') ; do
+  for dir in $(echo $volumesString | tr ',' '\n') ; do
     mountOpt="$mountOpt --mount type=volume,source=$dir,destination=$volumePrefix$i"
     internalDirs="$internalDirs$volumePrefix$i,"
     let i=$i+1
