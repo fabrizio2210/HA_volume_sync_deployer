@@ -24,6 +24,7 @@ set -x
 
 clientServicePrefix="volume-sync-client-"
 serverServiceName="volume-sync-server"
+volumePrefix="/opt/data"
 
 nodeName=$VOLUMESYNC_NAME
 key=$VOLUMESYNC_KEY
@@ -139,6 +140,16 @@ while true ; do
     changed=1
   fi
   
+  # mount volumes to be synced and pass the list inside the volume
+  mountOpt=
+  internalDirs=
+  i=1
+  for dir in $(echo $dirsString | tr ',' '\n') ; do
+    mountOpt="$mountOpt --mount type=volume,source=$dir,destination=$volumePrefix$i"
+    internalDirs="$internalDirs$volumePrefix$i,"
+    let i=$i+1
+  done
+  internalDirs=${internalDirs::-1}
   if [ $changed -eq 1 ] ; then
     # destroy and deploy server service
       docker service rm $(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$serverServiceName")
@@ -150,8 +161,9 @@ while true ; do
                             --env CSYNC2_NODES=$(echo $nodeList | tr '\n' ',' | tr ' ' ',') \
                             --env CSYNC2_NAME=$nodeName \
                             --env CSYNC2_KEY=$key \
-                            --env CSYNC2_DIRS=$dirsString \
+                            --env CSYNC2_DIRS=$internalDirs \
                             --env CSYNC2_AUTHJSON="{ \"$auth\": [\"\"] }" \
+                            $mountOpt \
                             $serverImage
   fi
 
