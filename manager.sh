@@ -179,7 +179,7 @@ while true ; do
       docker service create --name "$serverServiceName" \
                             --label  com.docker.stack.image="$serverImage" \
                             --label  com.docker.stack.namespace="$stack" \
-                            --label  traefik.frontend.rule="$nodeName.$serviceName" \
+                            --label  traefik.frontend.rule="Host: $nodeName.$serviceName" \
                             --label  traefik.port="80" \
                             --container-label com.docker.stack.namespace="$stack" \
                             --no-resolve-image \
