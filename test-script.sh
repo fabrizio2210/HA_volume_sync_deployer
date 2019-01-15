@@ -4,10 +4,11 @@
     -k  y7laMv1RAIJOWft3nRKmHnBYCptjEmNKQ8OrpaltFC1fLneJjmLwe96VEaOla5en \
     -d data,user_settings \
     -a root:toor \
-    -i fabrizio2210/prova-sync \
+    -i fabrizio2210/prova-server \
     -c fabrizio2210/prova-proxy \
     -s prova_sync  \
     -r pswchart.ha-at-homes.dynu.net \
-    -p 80
+    -p 80 \
+    -t Traefik_backends
 
 

@@ -114,11 +114,18 @@ internalDirs=${internalDirs::-1}
 mountOpt="$mountOpt --mount type=volume,source=etc_csync2,destination=/etc"
 mountOpt="$mountOpt --mount type=volume,source=var_csync2,destination=/var/lib/csync2"
 
+
 while true ; do 
   nodeList=$(for _string in $(dig TXT $serviceName +short | grep nodes=) ; do 
     echo ${_string#*=}|tr -d '"' | tr ',' '\n' 
   done)
   
+  # compute nodelist for the server
+  serverNodeList=
+  for _node in $nodeList ; do
+    serverNodeList="$serverNodeList${_node%@*}@${stack}_${proxyServicePrefix}${_node%@*} "
+  done
+  serverNodeList=${serverNodeList::-1}
   ###
   # Localize stack
   # Either take from argument or looking my container
@@ -153,7 +160,7 @@ while true ; do
                             --label   com.docker.stack.namespace="$stack" \
                             --container-label com.docker.stack.namespace="$stack" \
                             --no-resolve-image \
-                            --network $traefikNetwork  \
+                            --network $traefikNetwork,alias=${stack}_$proxyServicePrefix${_node%@*}  \
                             $proxyImage /usr/local/bin/chisel client --auth $auth http://${_node#*@}:$servicePort 0.0.0.0:30865:localhost:30865
     else 
       # remove from existing to verify that there is no services remaining
@@ -184,7 +191,7 @@ while true ; do
                             --label  traefik.port="80" \
                             --container-label com.docker.stack.namespace="$stack" \
                             --no-resolve-image \
-                            --env CSYNC2_NODES=$(echo $nodeList | tr '\n' ',' | tr ' ' ',') \
+                            --env CSYNC2_NODES=$(echo $serverNodeList | tr '\n' ',' | tr ' ' ',') \
                             --env CSYNC2_NAME=$nodeName \
                             --env CSYNC2_KEY=$key \
                             --env CSYNC2_DIRS=$internalDirs \
