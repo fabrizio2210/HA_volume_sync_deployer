@@ -160,7 +160,7 @@ while true ; do
                             --label   com.docker.stack.namespace="$stack" \
                             --container-label com.docker.stack.namespace="$stack" \
                             --no-resolve-image \
-                            --network $traefikNetwork,alias=${stack}_$proxyServicePrefix${_node%@*}  \
+                            --network name=$traefikNetwork,alias=${stack}_$proxyServicePrefix${_node%@*}  \
                             $proxyImage /usr/local/bin/chisel client --auth $auth http://${_node#*@}:$servicePort 0.0.0.0:30865:localhost:30865
     else 
       # remove from existing to verify that there is no services remaining
