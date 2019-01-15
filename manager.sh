@@ -176,6 +176,7 @@ while true ; do
                             --label  com.docker.stack.image="$serverImage" \
                             --label  com.docker.stack.namespace="$stack" \
                             --label  traefik.frontend.rule="$nodeName.$serviceName" \
+                            --label  traefik.port="80" \
                             --container-label com.docker.stack.namespace="$stack" \
                             --no-resolve-image \
                             --env CSYNC2_NODES=$(echo $nodeList | tr '\n' ',' | tr ' ' ',') \
