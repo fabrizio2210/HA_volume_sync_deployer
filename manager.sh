@@ -85,6 +85,17 @@ done
 # take list of nodes from TXT in DNS domain.
 # Key="nodes" Value separate  by ","
 
+# compute the mount volumes to be synced and pass the list inside the container
+mountOpt=
+internalDirs=
+i=1
+for dir in $(echo $volumesString | tr ',' '\n') ; do
+  mountOpt="$mountOpt --mount type=volume,source=$dir,destination=$volumePrefix$i"
+  internalDirs="$internalDirs$volumePrefix$i,"
+  let i=$i+1
+done
+internalDirs=${internalDirs::-1}
+
 while true ; do 
   nodeList=$(for _string in $(dig TXT $serviceName +short | grep nodes=) ; do 
     echo ${_string#*=}|tr -d '"' | tr ',' '\n' 
@@ -140,16 +151,6 @@ while true ; do
     changed=1
   fi
   
-  # mount volumes to be synced and pass the list inside the volume
-  mountOpt=
-  internalDirs=
-  i=1
-  for dir in $(echo $volumesString | tr ',' '\n') ; do
-    mountOpt="$mountOpt --mount type=volume,source=$dir,destination=$volumePrefix$i"
-    internalDirs="$internalDirs$volumePrefix$i,"
-    let i=$i+1
-  done
-  internalDirs=${internalDirs::-1}
   if [ $changed -eq 1 ] ; then
     # destroy and deploy server service
       docker service rm $(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$serverServiceName")
