@@ -136,7 +136,7 @@ while true ; do
   changed=0
   existingClientServices=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$proxyServicePrefix")
   for _node in $nodeList ; do
-    if [ $_node == $nodeName ] ; then
+    if [ ${_node%@*} == $nodeName ] ; then
       # no need for a proxy for the local node
       continue
     fi
