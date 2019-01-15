@@ -86,6 +86,10 @@ done
 [ -z "$traefikNetwork" ] && echo "Traefik network name is missing, define with -t" && exit 1
 
 
+# sanitize node name
+nodeName=$(echo $nodeName| tr -d '.')
+nodeName=$(echo $nodeName| tr -d '_')
+nodeName=$(echo $nodeName| tr -d '-')
 
 ######
 # MAIN
