@@ -25,6 +25,7 @@ set -x
 proxyServicePrefix="volume-sync-proxy-"
 serverServiceName="volume-sync-server"
 volumePrefix="/opt/data"
+servicePort=80
 
 nodeName=$VOLUMESYNC_NAME
 key=$VOLUMESYNC_KEY
@@ -34,8 +35,9 @@ serverImage=$VOLUMESYNC_SERVERIMAGE
 proxyImage=$VOLUMESYNC_PROXYIMAGE
 stack=$VOLUMESYNC_STACK
 serviceName=$VOLUMESYNC_SERVICE
+servicePort=$VOLUMESYNC_PORT
 
-while getopts ":n:k:d:a:i:c:s:r:" opt; do
+while getopts ":n:k:d:a:i:c:s:r:p:" opt; do
   case $opt in
 		n)
 			nodeName=$(echo $OPTARG | tr -d '[[:space:]]')
@@ -60,6 +62,9 @@ while getopts ":n:k:d:a:i:c:s:r:" opt; do
       ;;
 		r)
 			serviceName=$(echo $OPTARG | tr -d '[[:space:]]')
+      ;;
+		p)
+			servicePort=$(echo $OPTARG | tr -d '[[:space:]]')
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -122,6 +127,10 @@ while true ; do
   changed=0
   existingClientServices=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$proxyServicePrefix")
   for _node in $nodeList ; do
+    if [ $_node == $nodeName ] ; then
+      # no need for a proxy for the local node
+      continue
+    fi
     _nodeID=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$proxyServicePrefix${_node%@*}")
     if [ -z "$_nodeID" ] ; then
       changed=1
@@ -131,7 +140,7 @@ while true ; do
                             --label   com.docker.stack.namespace="$stack" \
                             --container-label com.docker.stack.namespace="$stack" \
                             --no-resolve-image \
-                            $proxyImage /usr/local/bin/chisel client --auth $auth http://${_node#*@} 0.0.0.0:30865:localhost:30865
+                            $proxyImage /usr/local/bin/chisel client --auth $auth http://${_node#*@}:$servicePort 0.0.0.0:30865:localhost:30865
     else 
       # remove from existing to verify that there is no services remaining
       existingClientServices=$(echo $existingClientServices | tr ' ' '\n' | grep -v $_nodeID)

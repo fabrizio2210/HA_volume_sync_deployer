@@ -7,6 +7,7 @@
     -i fabrizio2210/prova-sync \
     -c fabrizio2210/prova-proxy \
     -s prova_sync  \
-    -r pswchart.ha-at-homes.dynu.net
+    -r pswchart.ha-at-homes.dynu.net \
+    -p 80
 
 
