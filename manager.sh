@@ -36,8 +36,9 @@ proxyImage=$VOLUMESYNC_PROXYIMAGE
 stack=$VOLUMESYNC_STACK
 serviceName=$VOLUMESYNC_SERVICE
 servicePort=$VOLUMESYNC_PORT
+traefikNetwork=$VOLUMESYNC_TRAEFIKNETWORK
 
-while getopts ":n:k:d:a:i:c:s:r:p:" opt; do
+while getopts ":n:k:d:a:i:c:s:r:p:t:" opt; do
   case $opt in
 		n)
 			nodeName=$(echo $OPTARG | tr -d '[[:space:]]')
@@ -66,6 +67,9 @@ while getopts ":n:k:d:a:i:c:s:r:p:" opt; do
 		p)
 			servicePort=$(echo $OPTARG | tr -d '[[:space:]]')
       ;;
+		t)
+			traefikNetwork=$(echo $OPTARG | tr -d '[[:space:]]')
+      ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
       ;;
@@ -79,6 +83,7 @@ done
 [ -z "$serverImage" ] && echo "Server image is missing, define with -i" && exit 1
 [ -z "$proxyImage" ] && echo "Client image is missing, define with -c" && exit 1
 [ -z "$serviceName" ] && echo "Service name is missing, define with -r" && exit 1
+[ -z "$traefikNetwork" ] && echo "Traefik network name is missing, define with -t" && exit 1
 
 
 
@@ -100,6 +105,10 @@ for dir in $(echo $volumesString | tr ',' '\n') ; do
   let i=$i+1
 done
 internalDirs=${internalDirs::-1}
+
+# persisting csync2 data
+mountOpt="$mountOpt --mount type=volume,source=etc_csync2,destination=/etc"
+mountOpt="$mountOpt --mount type=volume,source=var_csync2,destination=/var/lib/csync2"
 
 while true ; do 
   nodeList=$(for _string in $(dig TXT $serviceName +short | grep nodes=) ; do 
@@ -165,7 +174,8 @@ while true ; do
       docker service rm $(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$serverServiceName")
       docker service create --name "$serverServiceName" \
                             --label  com.docker.stack.image="$serverImage" \
-                            --label   com.docker.stack.namespace="$stack" \
+                            --label  com.docker.stack.namespace="$stack" \
+                            --label  traefik.frontend.rule="$nodeName.$serviceName" \
                             --container-label com.docker.stack.namespace="$stack" \
                             --no-resolve-image \
                             --env CSYNC2_NODES=$(echo $nodeList | tr '\n' ',' | tr ' ' ',') \
@@ -173,6 +183,7 @@ while true ; do
                             --env CSYNC2_KEY=$key \
                             --env CSYNC2_DIRS=$internalDirs \
                             --env CSYNC2_AUTHJSON="{ \"$auth\": [\"\"] }" \
+                            --network $traefikNetwork  \
                             $mountOpt \
                             $serverImage
   fi
