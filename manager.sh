@@ -116,6 +116,9 @@ mountOpt="$mountOpt --mount type=volume,source=var_csync2,destination=/var/lib/c
 
 
 while true ; do 
+
+  sleep 30
+
   nodeList=$(for _string in $(dig TXT $serviceName +short | grep nodes=) ; do 
     echo ${_string#*=}|tr -d '"' | tr ',' '\n' 
   done)
@@ -145,17 +148,17 @@ while true ; do
   # Verify services of stack and destroy/deploy if differs from state to be
   
   changed=0
-  existingClientServices=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$proxyServicePrefix")
+  existingClientServices=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=${stack}_$proxyServicePrefix")
   for _node in $nodeList ; do
     if [ ${_node%@*} == $nodeName ] ; then
       # no need for a proxy for the local node
       continue
     fi
-    _nodeID=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$proxyServicePrefix${_node%@*}")
+    _nodeID=$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=${stack}_$proxyServicePrefix${_node%@*}")
     if [ -z "$_nodeID" ] ; then
       changed=1
       # deploy client service
-      docker service create --name "$proxyServicePrefix${_node%@*}" \
+      docker service create --name "${stack}_$proxyServicePrefix${_node%@*}" \
                             --label  com.docker.stack.image="$proxyImage" \
                             --label   com.docker.stack.namespace="$stack" \
                             --container-label com.docker.stack.namespace="$stack" \
@@ -176,15 +179,15 @@ while true ; do
     done
   fi
   
-  if [ -z "$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$serverServiceName")" ] ; then
+  if [ -z "$(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=${stack}_$serverServiceName")" ] ; then
     # server is missing
     changed=1
   fi
   
   if [ $changed -eq 1 ] ; then
     # destroy and deploy server service
-      docker service rm $(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=$serverServiceName")
-      docker service create --name "$serverServiceName" \
+      docker service rm $(docker service ls -q --filter "label=com.docker.stack.namespace=$stack" --filter "name=${stack}_$serverServiceName")
+      docker service create --name "${stack}_$serverServiceName" \
                             --label  com.docker.stack.image="$serverImage" \
                             --label  com.docker.stack.namespace="$stack" \
                             --label  traefik.frontend.rule="Host: $nodeName.$serviceName" \
@@ -200,7 +203,5 @@ while true ; do
                             $mountOpt \
                             $serverImage
   fi
-
-  sleep 30
 
 done
